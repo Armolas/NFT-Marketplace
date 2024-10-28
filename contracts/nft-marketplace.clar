@@ -113,3 +113,63 @@
 (define-public (get-listing-in-ustx (id uint))
     (ok (map-get? marketplace id))
 )
+
+
+;;;;;;;;;;;;;;;;;;;;
+;;;; MINT FUNCS ;;;;
+;;;;;;;;;;;;;;;;;;;;
+
+;; MINT ONE TOKEN
+(define-public (mint-one)
+    (let
+        (
+            (current-index (var-get collection-index))
+            (next-index (+ current-index u1))
+            (whitelist-count (unwrap! (map-get? whitelist tx-sender) (err "err-not-whitelisted")))
+        )
+        (asserts! (< current-index collection-limit) (err "err-token-minted-out"))
+        (asserts! (> whitelist-count u0) (err "err-whitelist-minting-spot-exhausted"))
+        (unwrap! (stx-transfer? advance-nft-price tx-sender nft-creator) (err "err-transferring-stx"))
+        (unwrap! (nft-mint? advance-nft next-index tx-sender) (err "err-minting-token"))
+        (unwrap! (track-token next-index) (err "err-tracking-mint"))
+        (var-set collection-index next-index)
+        (ok (map-set whitelist tx-sender (- whitelist-count u1)))
+    )
+)
+
+;; MINT TWO TOKENS
+(define-public (mint-two)
+    (begin
+        (unwrap! (mint-one) (err "err-mint-1"))
+        (ok (mint-one))
+    )
+)
+
+;; MINT FIVE TOKENS
+(define-public (mint-five)
+    (begin
+        (unwrap! (mint-one) (err "err-mint-1"))
+        (unwrap! (mint-one) (err "err-mint-2"))
+        (unwrap! (mint-one) (err "err-mint-3"))
+        (unwrap! (mint-one) (err "err-mint-4"))
+        (ok (mint-one))
+    )
+)
+
+;; GET USER MINTS
+(define-read-only (get-mints)
+    (map-get? user-tokens tx-sender)
+)
+
+;; USER TOKEN TRACKER FUNCTION
+(define-private (track-token (id uint))
+    (let
+        (
+            (user-mints (map-get? user-tokens tx-sender))
+        )
+        (if (is-some user-mints)
+            (ok (map-set user-tokens tx-sender (unwrap! (as-max-len? (append (unwrap! user-mints (err "err-unwrapping-mints")) id) u10) (err "err-tracking-mint"))))
+            (ok (map-set user-tokens tx-sender (list id)))
+        )
+    )
+)
