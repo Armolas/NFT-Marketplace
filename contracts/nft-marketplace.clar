@@ -173,3 +173,32 @@
         )
     )
 )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; ADMIN FUNCTIONS ;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; ADD AN ADMIN
+(define-public (add-admin (admin principal))
+    (let
+        (
+            (admin-list (var-get admins))
+        )
+        (asserts! (is-some (index-of? admin-list tx-sender)) (err "err-unauthorized"))
+        (asserts! (is-none (index-of? admin-list admin)) (err "already-an-admin"))
+        (ok (var-set admins (unwrap! (as-max-len? (append admin-list admin) u5) (err "err-admin-overflow"))))
+    )
+)
+
+;; WHITELIST
+(define-public (whitelist-user (user principal) (spots uint))
+    (let
+        (
+            (whitelist-count (map-get? whitelist user))
+        )
+        (asserts! (is-some (index-of? (var-get admins) tx-sender)) (err "err-unauthorized"))
+        (asserts! (is-none whitelist-count) (err "err-already-whitelisted"))
+        (ok (map-set whitelist user spots))
+    )
+)
