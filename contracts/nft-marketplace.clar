@@ -65,3 +65,51 @@
         (ok (nft-transfer? advance-nft id sender recipient))
     )
 )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; MARKETPLACE FUNCS ;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; LIST TOKEN
+(define-public (list-in-ustx (id uint) (price uint))
+    (let
+        (
+            (nft-owner (unwrap! (get-owner id) (err "err-token-does-not-exist")))
+        )
+        (asserts! (is-eq (some tx-sender) nft-owner) (err "err-not-token-owner"))
+        (ok (map-set marketplace id {price: price, owner: tx-sender}))
+    )
+)
+
+;; UNLIST TOKEN
+(define-public (unlist-in-ustx (id uint))
+    (let
+        (
+            (nft-owner (unwrap! (get-owner id) (err "err-token-does-not-exist")))
+            (nft-market (map-get? marketplace id))
+        )
+        (asserts! (is-eq (some tx-sender) nft-owner) (err "err-not-token-owner"))
+        (asserts! (is-some nft-market) (err "err-token-not-listed"))
+        (ok (map-delete marketplace id))
+    )
+)
+
+;; BUY TOKEN
+(define-public (buy-in-ustx (id uint))
+    (let
+        (
+            (nft-market (unwrap! (map-get? marketplace id) (err "err-token-not-listed")))
+            (price (get price nft-market))
+            (owner (get owner nft-market))
+        )
+        (unwrap! (stx-transfer? price tx-sender owner) (err "err-transferring-stx"))
+        (unwrap! (nft-transfer? advance-nft id owner tx-sender) (err "err-token-transfer"))
+        (ok (map-delete marketplace id))
+    )
+)
+
+;; GET TOKEN LISTING
+(define-public (get-listing-in-ustx (id uint))
+    (ok (map-get? marketplace id))
+)
